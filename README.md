@@ -1,8 +1,5 @@
-# Updated to EOSIO.CDT v1.4.0
-
-# Non-Fungible Token (NFT) 
-
-For any questions, contributions or feedback join our dedicated telegram group: https://t.me/eosionft
+# ZJUBCA Non-Fungible Token (NFT) 
+Non-Fungible tokens circulate in ZJUBCA.
 
 ## Simple Summary
 
