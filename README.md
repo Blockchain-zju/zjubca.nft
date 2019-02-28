@@ -1,13 +1,20 @@
 # ZJUBCA Non-Fungible Token (NFT) 
+
+非同质化Token合约，供协会内部使用。
+
 Non-Fungible tokens circulate in ZJUBCA.
-
-## Simple Summary
-
-A standard interface for non-fungible EOS tokens.
 
 ## Abstract
 
+根据下列标准API，我们实现了基于EOS的非同质化合约（下简称为NFT），并提供了用于追踪和转移NFT的基础方法。
+
 The following standard allows the implementation of a standard API for NFTs within EOS smart contracts. This standard provides basic functionality to track and transfer NFTs.
+
+何为NFT？NFT最初诞生于以太坊标准ERC721，用于表征具有唯一性的数字资产：
+
+- 现实资产 - 房产、艺术品等
+- 加密藏品 - 唯一性或限量版的数字收藏品
+- 具有“负值”属性的资产 - 贷款、负债或其他未尽责任的表征。
 
 NFTs can represent ownership over digital or physical assets:
 
@@ -15,201 +22,56 @@ NFTs can represent ownership over digital or physical assets:
 - Cryptocollectibles — unique collectibles or  instances which are part of limited-edition collections. 
 - "Negative value" assets — loans, burdens and other responsibilities
 
+NFT是**互不相同**的。在使用时你必须确认每一个Token的所有权。
+
 NFTs are *distinguishable* and you must track the ownership of each one separately.
-
-## Motivation
-
-A standard interface allows wallet/broker/auction applications to work with any NFT on EOS blockchain. A simple eosio.nft smart contract is provided.
-
-This standard is inspired by the eosio.token standard. eosio.token is insufficient for tracking NFTs because each asset is distinct (non-fungible) whereas each of a quantity of tokens is identical (fungible).
 
 ## Specification
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119.
+一个NFT包含如下字段:
 
-``` eosio.nft.hpp
-/// @title eosio.nft public interface
-/// @dev See https://github.com/jafri/eosio.nft/blob/master/README.md
+- id `uint64` - 全局唯一的id
+- uri `string` - 统一资源标识符，遵循[RFC 3986](https://www.ietf.org/rfc/rfc3986.txt)
+- owner `name`  - 所有者名称
+- value `asset` - Token价值，固定为1
+- tokenName `string` - Token的名称
 
-#include <eosiolib/eosio.hpp>
-#include <eosiolib/asset.hpp>
-#include <string>
-#include <vector>
+A nft contains several fields below:
 
-using namespace eosio;
-using std::string;
-using std::vector;
-typedef uint128_t uuid;
-typedef uint64_t id_type;
-typedef string uri_type;
+- id `uint64` - unique identifier
+- uri `string` - uniform resource identifier, follow [RFC 3986](https://www.ietf.org/rfc/rfc3986.txt)
+- owner `name` - owner name
+- value `asset` - token value, always 1
+- tokenName `string` - token name
 
-CONTRACT nft : public eosio::contract {
-    public:
-        using contract::contract;
-        nft( name receiver, name code, datastream<const char*> ds)
-		: contract(receiver, code, ds), tokens(receiver, receiver.value) {}
+### URI [RFC 3986](https://www.ietf.org/rfc/rfc3986.txt)
 
-	/// Creates token with a symbol name for the specified issuer account.
-	/// Throws if token with specified symbol already exists.
-	/// @param issuer Account name of the token issuer
-	/// @param symbol Symbol code of the token
-        ACTION create(name issuer, std::string symbol);
+统一资源标识符（英语：Uniform Resource Identifier，缩写：URI）是一个用于标识某一互联网资源名称的字符串。该种标识允许用户对网络中的资源通过特定的协议进行交互操作。
 
-	/// Issues specified number of tokens with previously created symbol to the account name "to". 
-	/// Each token is generated with an unique token_id assigned to it. Requires authorization from the issuer.
-	/// Any number of tokens can be issued.
-	/// @param to Account name of tokens receiver
-	/// @param quantity Number of tokens to issue for specified symbol (positive integer number)
-	/// @param uris Vector of URIs for each issued token (size is equal to tokens number)
-	/// @param name Name of issued tokens (max. 32 bytes)
-	/// @param memo Action memo (max. 256 bytes)
-        ACTION issue(name to,
-                   asset quantity,
-                   vector<string> uris,
-		   string name,
-                   string memo);
+通用URI的格式如下：
 
-	/// Transfers 1 token with specified "id" from account "from" to account "to".
-	/// Throws if token with specified "id" does not exist, or "from" is not the token owner.
-	/// @param from Account name of token owner
-	/// @param to Account name of token receiver
-	/// @param id Unique ID of the token to transfer
-	/// @param memo Action memo (max. 256 bytes)
-        ACTION transferid(name from,
-                      name to,
-                      id_type id,
-                      string memo);
-
-	/// Transfers 1 token with specified symbol in asset from account "from" to account "to".
-	/// Throws if amount is not 1, token with specified symbol does not exist, or "from" is not the token owner.
-	/// @param from Account name of token owner
-	/// @param to Account name of token receiver
-	/// @param quantity Asset with 1 token 
-	/// @param memo Action memo (max. 256 bytes)
-	ACTION transfer(name from,
-                      name to,
-                      asset quantity,
-                      string memo);
-		      
-	/// @notice Sets owner of the token as a ram payer for stored data.
-	/// @param payer Account name of token owner
-	/// @param id Unique ID of the token to burn
-	ACTION burn(name owner,
-                  id_type token_id);
-			 
-	/// @notice Burns 1 token with specified "id" owned by account name "owner".
-	/// @param owner Account name of token owner
-	/// @param id Unique ID of the token to burn
-        ACTION setrampayer(name payer, 
-			   id_type id);
-    
-    	/// Structure keeps information about the balance of tokens 
-	/// for each symbol that is owned by an account. 
-	/// This structure is stored in the multi_index table.
-        TABLE account {
-
-            asset balance;
-
-            uint64_t primary_key() const { return balance.symbol.code().raw(); }
-        };
-
-	/// Structure keeps information about the total supply 
-	/// of tokens for each symbol issued by "issue" account. 
-	/// This structure is stored in the multi_index table.
-        TABLE stats {
-            asset supply;
-            name issuer;
-
-            uint64_t primary_key() const { return supply.symbol.code().raw(); }
-            uint64_t get_issuer() const { return issuer.value; }
-        };
-
-	/// Structure keeps information about each issued token.
-	/// Each token is assigned a global unique ID when it is issued. 
-	/// Token also keeps track of its owner, stores assigned URI and its symbol code.    
-	/// This structure is stored in the multi_index table "tokens".
-        TABLE token {
-            id_type id;          // Unique 64 bit identifier,
-            uri_type uri;        // RFC 3986
-            name owner;  	 // token owner
-            asset value;         // token value (1 SYS)
-	    string tokenName;	 // token name
-
-            id_type primary_key() const { return id; }
-            uint64_t get_owner() const { return owner.value; }
-            string get_uri() const { return uri; }
-            asset get_value() const { return value; }
-	    uint64_t get_symbol() const { return value.symbol.code().raw(); }
-	    string get_name() const { return tokenName; }
-
-	    // generated token global uuid based on token id and
-	    // contract name, passed as argument
-	    uuid get_global_id(name self) const
-	    {
-		uint128_t self_128 = static_cast<uint128_t>(self.value);
-		uint128_t id_128 = static_cast<uint128_t>(id);
-		uint128_t res = (self_128 << 64) | (id_128);
-		return res;
-	    }
-
-	    string get_unique_name() const
-	    {
-		string unique_name = tokenName + "#" + std::to_string(id);
-		return unique_name;
-	    }
-        };
-	
-	/// Account balance table
-	/// Primary index:
-	///	owner account name
-	using account_index = eosio::multi_index<"accounts"_n, account>;
-
-	/// Issued tokens statistics table
-	/// Primary index:	
-	///	token symbol name
-	/// Secondary indexes:
-	///	issuer account name	
-	using currency_index = eosio::multi_index<"stat"_n, stats,
-	                       indexed_by< "byissuer"_n, const_mem_fun< stats, uint64_t, &stats::get_issuer> > >;
-
-	/// Issued tokens table
-	/// Primary index:
-	///	token id
-	/// Seconday indexes:
-	///	owner account name
-	///	token symbol name
-	using token_index = eosio::multi_index<"token"_n, token,
-	                    indexed_by< "byowner"_n, const_mem_fun< token, uint64_t, &token::get_owner> >,
-			    indexed_by< "bysymbol"_n, const_mem_fun< token, uint64_t, &token::get_symbol> > >;
-			    
-    private:
-        token_index tokens;
-};
 ```
-In order to query information stored in tables, it is possible to use cleos commands:
+scheme:[//[user[:password]@]host[:port]][/path][?query][#fragment]
+```
 
-display all issued tokens info 
+一个符合URI格式的互联网URL例子:
+```
+http://www.google.com/search
+```
 
-`cleos get table eosio.nft eosio.nft token` 
+在协会Dapp的使用场景中，如果您想发行NFT，我们建议您遵循以下格式来设计Token的URI:
 
-display "tester1" tokens balance
+```
+nft://[Dapp英文名称]/[种类/用途]
+```
 
-`cleos get table eosio.nft tester1 accounts`   
+如发行NFT用于表征订单系统(order.system)的代金券(coupon)，则我们推荐的URI格式如下:
 
-or
+```
+nft://order.system/coupon/...(自定义字段)
+```
 
-`cleos get currency balance eosio.nft tester1`
-
-display current supply of tokens with symbol "NFT"
-
-`cleos get table eosio.nft NFT stat`
-
-Build command for EOSIO.CDT v1.4.0
-
-`eosio-cpp -o eosio.nft.wasm eosio.nft.cpp --abigen --contract nft`
-
-## To-do
-1. Add secondary indices - done
-2. Add approval?
-3. Transfer between contracts
-
+## How to build and deploy
+1. `npm install`
+2. `js4eos dapp compile zjubca.nft`
+3. `js4eos dapp deploy zjubca.nft`
